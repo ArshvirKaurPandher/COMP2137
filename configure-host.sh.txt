@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Function to log messages if verbose mode is enabled
+log_message() {
+    if [ "$VERBOSE" = true ]; then
+        echo "$1"
+    fi
+}
+
+# Function to handle signals
+trap '' SIGTERM SIGINT SIGHUP
+
+# Default values
+VERBOSE=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        -verbose)
+        VERBOSE=true
+        shift
+        ;;
+        -name)
+        DESIRED_NAME="$2"
+        shift
+        shift
+        ;;
+        -ip)
+        DESIRED_IP="$2"
+        shift
+        shift
+        ;;
+        -hostentry)
+        DESIRED_HOST="$2"
+        DESIRED_IP="$3"
+        shift
+        shift
+        shift
+        ;;
+        *)
+        echo "Unknown option: $1"
+        exit 1
+        ;;
+    esac
+done
+
+# Configure hostname
+if [ -n "$DESIRED_NAME" ]; then
+    CURRENT_NAME=$(hostname)
+    if [ "$CURRENT_NAME" != "$DESIRED_NAME" ]; then
+        echo "$DESIRED_NAME" > /etc/hostname
+        sed -i "s/$CURRENT_NAME/$DESIRED_NAME/g" /etc/hosts
+        log_message "Hostname updated to $DESIRED_NAME"
+        logger "Hostname updated to $DESIRED_NAME"
+    fi
+fi
+
+# Configure IP address
+if [ -n "$DESIRED_IP" ]; then
+    CURRENT_IP=$(hostname -I | awk '{print $1}')
+    if [ "$CURRENT_IP" != "$DESIRED_IP" ]; then
+        sed -i "s/$CURRENT_IP/$DESIRED_IP/g" /etc/hosts
+        sed -i "s/address .*/address $DESIRED_IP/g" /etc/netplan/*.yaml
+        log_message "IP address updated to $DESIRED_IP"
+        logger "IP address updated to $DESIRED_IP"
+    fi
+fi
