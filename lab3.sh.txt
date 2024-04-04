@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Function to log messages if verbose mode is enabled
+log_message() {
+    if [ "$VERBOSE" = true ]; then
+        echo "$1"
+    fi
+}
+
+# Default values
+VERBOSE=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        -verbose)
+        VERBOSE=true
+        shift
+        ;;
+        *)
+        echo "Unknown option: $1"
+        exit 1
+        ;;
+    esac
+done
+
+# Transfer and run configure-host.sh on server1-mgmt
+scp configure-host.sh remoteadmin@server1-mgmt:/root
+ssh remoteadmin@server1-mgmt -- /root/configure-host.sh -verbose -name loghost -ip 192.168.16.3 -hostentry webhost 192.168.16.4
+
+# Transfer and run configure-host.sh on server2-mgmt
+scp configure-host.sh remoteadmin@server2-mgmt:/root
+ssh remoteadmin@server2-mgmt -- /root/configure-host.sh -verbose -name webhost -ip 192.168.16.4 -hostentry loghost 192.168.16.3
+
+# Update local /etc/hosts
+./configure-host.sh -verbose -hostentry loghost 192.168.16.3
+./configure-host.sh -verbose -hostentry webhost 192.168.16.4
